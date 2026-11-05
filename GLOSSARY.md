@@ -21,7 +21,7 @@ _Avoid_: LoRA (which does not imply quantization)
 ### Artifacts
 
 **Base model**:
-The pretrained model being adapted, whose original weights stay frozen.
+The pretrained model being adapted, whose original weights stay frozen. This is SmolVLM in the app and Gemma 3 4B in the reference notebook.
 _Avoid_: Foundational model (reserved for the hosted model used as a comparison)
 
 **Adapter**:

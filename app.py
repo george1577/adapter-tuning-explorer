@@ -244,7 +244,7 @@ def describe_config(config: dict) -> str:
 
 with st.sidebar:
     st.title("🩻 Adapter Tuning Explorer")
-    st.caption(f"Base model: `{MODEL_ID}`")
+    st.caption(f"Base model in this app: `{MODEL_ID}`")
     st.markdown(
         "**Learning path**\n"
         "1. Why tune, and the data\n"
@@ -288,7 +288,7 @@ with tab1:
         "part of the model. Before training anything, look at what the model has to learn from."
     )
 
-    st.subheader("What the base model writes today")
+    st.subheader("What the SmolVLM base model writes today")
     default = next((i for i, e in enumerate(train_examples) if e.image_id == NOTEBOOK_TRAIN_IMAGE), 0)
     index = st.selectbox(
         "Training example", range(len(train_examples)), index=default,
@@ -307,7 +307,7 @@ with tab1:
             )
         if busy:
             st.caption(BUSY_NOTE)
-        if st.button("Caption with the base model", key="t1_caption", disabled=busy):
+        if st.button("Caption with the SmolVLM base model", key="t1_caption", disabled=busy):
             st.session_state["t1"] = (example.image_id, get_base_model().caption(example.path)[0])
         if st.session_state.get("t1", (None,))[0] == example.image_id:
             st.markdown(f"**SmolVLM base model** (live)\n\n> {st.session_state['t1'][1]}")
@@ -620,6 +620,15 @@ with tab4:
 with tab5:
     st.header("⑤ Test the adapter")
     st.warning(WARNING)
+    st.info(
+        "**Which model is which on this tab**\n\n"
+        "- **SmolVLM base model:** SmolVLM before any training, the same weights you downloaded. "
+        "The app gets it by switching the adapter off.\n"
+        "- **SmolVLM tuned model:** those same weights with the adapter you select below on top.\n"
+        f"- **Gemma 3 4B tuned model:** the notebook's own result, a different and much larger model. It appears "
+        f"once, as a recorded caption on `{NOTEBOOK_TEST_IMAGE}`. The notebook recorded no caption from Gemma before "
+        "tuning, so \"base model\" here never means Gemma."
+    )
     runs = list_runs()
     if not runs:
         st.info("No adapter yet. Train one in tab ④, or start the reference run there.")
@@ -635,8 +644,8 @@ with tab5:
         )
         base_loss, tuned_loss = run.results["held_out_base"], run.results["held_out_tuned"]
         c1, c2, c3 = st.columns(3)
-        c1.metric("Held-out loss, base model", f"{base_loss:.3f}")
-        c2.metric("Held-out loss, tuned model", f"{tuned_loss:.3f}", f"{tuned_loss - base_loss:+.3f}", delta_color="inverse")
+        c1.metric("Held-out loss, SmolVLM base model", f"{base_loss:.3f}")
+        c2.metric("Held-out loss, SmolVLM tuned model", f"{tuned_loss:.3f}", f"{tuned_loss - base_loss:+.3f}", delta_color="inverse")
         c3.metric("Training loss on captions, last 20 examples",
                   f"{sum(h['caption_loss'] for h in run.history[-20:]) / max(len(run.history[-20:]), 1):.3f}")
 
@@ -646,10 +655,10 @@ with tab5:
             left, right = st.columns([1, 3])
             left.image(item["path"], caption=item["image_id"])
             right.markdown(
-                f"**Real:** {item['real']}\n\n**Base model:** {item['base']}\n\n**Tuned model:** {item['tuned']}"
+                f"**Real:** {item['real']}\n\n**SmolVLM base model:** {item['base']}\n\n**SmolVLM tuned model:** {item['tuned']}"
             )
             if item["image_id"] == NOTEBOOK_TEST_IMAGE:
-                right.markdown(f"**Gemma 3 4B tuned** (recorded in notebook 4): {GEMMA_TUNED_CAPTION}")
+                right.markdown(f"**Gemma 3 4B tuned model** (a different model, recorded in notebook 4): {GEMMA_TUNED_CAPTION}")
             st.divider()
 
         st.subheader("Try it yourself")
@@ -661,7 +670,7 @@ with tab5:
         example = test_examples[index]
         strength = st.slider(
             "Adapter strength", 0.0, 1.0, 1.0, step=0.1,
-            help="0 is the base model and 1 is the adapter as trained. It multiplies the LoRA correction.",
+            help="0 switches the adapter off, which gives the SmolVLM base model. 1 is the adapter as trained. It multiplies the LoRA correction.",
         )
         if run.config["modules_to_save"] and 0 < strength < 1:
             st.caption("This run trained modules_to_save. Strength only scales the LoRA part, not those full copies.")
@@ -680,7 +689,7 @@ with tab5:
         right.markdown(f"**Real caption:** {example.caption}")
         stored = st.session_state.get("t5")
         if stored and stored["key"] == (run.name, example.image_id):
-            right.markdown(f"**At strength {stored['strength']:.1f}:** {stored['text']}")
+            right.markdown(f"**SmolVLM at strength {stored['strength']:.1f}:** {stored['text']}")
         if stored and stored["key"] == (run.name, example.image_id) and not busy:
             tuned = get_tuned_model(run.name, str(run.adapter_dir))
             ids = stored["ids"]
@@ -696,9 +705,9 @@ with tab5:
                 "probability": st.column_config.ProgressColumn(format="%.3f", min_value=0, max_value=1)
             }
             c1, c2 = st.columns(2)
-            c1.markdown("Base model")
+            c1.markdown("SmolVLM base model (adapter off)")
             c1.dataframe(pd.DataFrame(base_table, columns=["next token", "probability"]),
                          column_config=column_config, hide_index=True)
-            c2.markdown(f"Tuned model at strength {stored['strength']:.1f}")
+            c2.markdown(f"SmolVLM tuned model at strength {stored['strength']:.1f}")
             c2.dataframe(pd.DataFrame(tuned_table, columns=["next token", "probability"]),
                          column_config=column_config, hide_index=True)

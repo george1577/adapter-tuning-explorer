@@ -70,6 +70,10 @@ and shows you the notebook's Gemma results as recorded reference data.
 [ADR 0001](adr/0001-smolvlm-instead-of-gemma.md) records why, and [section 8](#8-where-the-app-differs-from-the-notebooks)
 lists every difference.
 
+> **What "base model" means in this guide.** The base model is whichever model is being adapted, so it depends
+> on where you are. Everywhere in the app, and for every result this guide reports from a run, it's **SmolVLM
+> before any training**. Gemma 3 4B is the notebook's base model, and it's always named when it appears.
+
 ---
 
 ## 2. Why tune, and the data (tab ①)
@@ -141,7 +145,7 @@ way to reduce the loss without learning anything about radiology. Section 5 meas
 
 - Flip *Also mask the prompt from the labels* and watch the yellow tokens become struck through.
 - Pick an example with a very short caption and see how much of the graded text is prompt.
-- Click *Caption with the base model* on several images. How often does it get even the type of scan right?
+- Click *Caption with the SmolVLM base model* on several images. How often does it get even the type of scan right?
 
 ---
 
@@ -405,8 +409,8 @@ We ran the reference settings twice more, changing one thing each time:
 | Peak memory | 1.79 GB | 1.83 GB | 2.43 GB |
 | Training time | 6.2 min | 6.5 min | 7.2 min |
 | Final training loss (last 20) | 2.08 | 3.81 | 1.66 |
-| **Held-out loss, base model** | 4.356 | 4.356 | 4.356 |
-| **Held-out loss, tuned model** | **3.975** | **3.881** | **3.956** |
+| **Held-out loss, SmolVLM base model** | 4.356 | 4.356 | 4.356 |
+| **Held-out loss, SmolVLM tuned model** | **3.975** | **3.881** | **3.956** |
 
 The **held-out loss** is measured on 30 images the adapter never saw, counting caption tokens only, so it's
 the fairest number here. (Section 6 explains it.)
@@ -440,9 +444,26 @@ Each run takes about 5 to 10 minutes, including evaluation. Runs are saved, so y
 Training loss describes the examples the model studied. To find out whether it learned anything *real*, test
 it on images it has never seen.
 
+### Which model is which
+
+This tab compares models, so it helps to know exactly what each label means:
+
+| Label in the app | What it is | Where it comes from |
+|---|---|---|
+| **SmolVLM base model** | SmolVLM before any training | Run on this machine, with the adapter switched off |
+| **SmolVLM tuned model** | The same SmolVLM weights with your adapter on top | Run on this machine, with the adapter switched on |
+| **Gemma 3 4B tuned model** | The notebook's result, from a different and much larger model | Recorded in notebook 4, for one image only |
+
+Two things follow from this:
+
+- **Your training run never touched Gemma.** The "before and after" on this tab is SmolVLM before and after.
+- **Gemma has no "before" here.** The notebook recorded no caption from Gemma before tuning, and no held-out loss
+  either. So you can't measure how much tuning helped Gemma, and you can't compare the Gemma caption with the
+  SmolVLM base model as if they were two stages of one model.
+
 ### Held-out loss
 
-The reference run's held-out loss fell from **4.356 to 3.975** over 30 test images. That's a real but
+The reference run's held-out loss fell from **4.356 (SmolVLM base model) to 3.975 (SmolVLM tuned model)** over 30 test images. That's a real but
 modest improvement: the probability the model gives each correct caption token rises from about 1.3% to about
 1.9% on average ([Appendix C](#appendix-c-what-a-loss-number-means)).
 
@@ -453,7 +474,7 @@ about 9%.
 
 The gallery, from the reference run:
 
-| Image | Real caption | Base model | Tuned model |
+| Image | Real caption | SmolVLM base model | SmolVLM tuned model |
 |---|---|---|---|
 | `ROCO_00001` | Axial MRI (coronal view). | A scan of an axial view of the brain shows a lesion in the right occipital lobe. | Posterior sagittal view of a patient with a right subdural hematoma. |
 | `ROCO_00185` | Anteroposterior radiograph of pelvis at most recent follow up. | An X-ray of the pelvis shows a normal appearance with no fractures or abnormalities. | Posterior pelvic pain with a large lesion in the right lateral aspect of the pelvis. |
@@ -461,7 +482,7 @@ The gallery, from the reference run:
 | `ROCO_00031` | CTO of RCA (closure in the 2nd segment) | This image is a medical scan of a patient's chest X-ray. […] | Size 622 WT - 113 mm - 113 mm - 113 mm - 113 mm - […] |
 
 The tuned captions **are** shorter and more like a paper's terse style, instead of the chatty "This image
-is…". That's the adapter working. For comparison, notebook 4 recorded this from tuned Gemma on `ROCO_00006`:
+is…". That's the adapter working. For comparison, notebook 4 recorded this from tuned Gemma, a different and much larger model, on `ROCO_00006`:
 *"CT scan of the abdomen showing the size and density of the intra-abdominal mass."*
 
 ### The catch: sounding right is not being right
@@ -471,7 +492,7 @@ Read the table again, this time checking the facts:
 - **It invents findings.** Nothing in the real caption for `ROCO_00001` mentions a hematoma, yet the tuned
   model states one with total confidence. In an early test run, a different adapter wrote "Liver scan showing
   hepatocellular carcinoma" for an abdominal scan whose real caption described tumor masses but never named a
-  carcinoma. The base model invents things too (see its "lesion"), so tuning didn't create the problem. It
+  carcinoma. The SmolVLM base model invents things too (see its "lesion"), so tuning didn't create the problem. It
   *dressed the problem up in more convincing language*.
 - **It latches onto a habit.** 9 of the 12 tuned gallery captions start with "Posterior", yet only 4 of the 100
   training captions contain that word at all. A likely explanation is that "Postoperative" begins 4 training
@@ -485,13 +506,13 @@ Read the table again, this time checking the facts:
 
 **So is this a failure?** It's a small model, on 100 examples, on a very hard task, and the point of this app is
 to let you see what really happens. It does show the general lesson: **always evaluate on held-out data, and
-read the outputs**. The notebook tests a single image and never compares it with the base model, so it wouldn't
+read the outputs**. The notebook tests a single image and never compares it with Gemma's base model, so it wouldn't
 reveal any of this.
 
 ### The adapter-strength slider
 
 Because LoRA is literally `W + (α/r)·BA`, you can multiply the correction by anything you like. Strength 0 is
-exactly the base model, which the test suite verifies, and strength 1 is the adapter as trained. For
+exactly the SmolVLM base model, which the test suite verifies, and strength 1 is the adapter as trained. For
 `ROCO_00001`:
 
 | Strength | Caption |
@@ -512,7 +533,7 @@ You can watch the style change gradually, and the invented details change with i
 The app can compare the probabilities of the next token with the adapter off and on. For the first token of
 `ROCO_00001`:
 
-| Base model | Probability | Tuned model | Probability |
+| SmolVLM base model | Probability | SmolVLM tuned model | Probability |
 |---|---|---|---|
 | `␣A` | 91.1% | `␣Post` | 25.9% |
 | `␣An` | 6.8% | `␣A` | 4.7% |
@@ -520,7 +541,7 @@ The app can compare the probabilities of the next token with the adapter off and
 | `A` | 0.1% | `␣T` | 3.5% |
 | `␣This` | 0.1% | `␣Diff` | 2.8% |
 
-Two things have happened. `␣Post` went from 0.8% to 25.9%, and the base model's near-certainty about "A" is gone.
+Two things have happened. `␣Post` went from 0.8% to 25.9%, and the SmolVLM base model's near-certainty about "A" is gone.
 The adapter has spread the probability across many words that could plausibly begin a caption in a paper.
 
 ### What to try
@@ -593,7 +614,7 @@ written to teach the pattern. But each one is instructive:
 2. **`random.choices` samples with replacement.** The notebook's 500 "examples" can include duplicates. In our
    reference run, 100 draws from 100 images gave 60 unique images. The notebook's pool is far larger, so it would
    have far fewer repeats.
-3. **There's no held-out evaluation.** The test is one image, and it's never compared with the base model.
+3. **There's no held-out evaluation.** The test is one image, and it's never compared with Gemma's base model.
 4. **The adapter isn't small.** `modules_to_save` makes up about 97% of the trainable weights (section 3).
 5. **The loss plateaus early.** It reaches about 4 to 5 by around step 20 of 125.
 6. **The model and processor come from different checkpoints.** The model is `gemma-3-4b-pt`, while the
@@ -674,7 +695,7 @@ mean):
 
 | Loss | Typical probability of the right token | Where it appears in this guide |
 |---|---|---|
-| 4.356 | 1.3% | Held-out, base model |
+| 4.356 | 1.3% | Held-out, SmolVLM base model |
 | 4.29 | 1.4% | Reference run, caption tokens, first 20 examples |
 | 4.00 | 1.8% | Reference run, caption tokens, last 20 examples |
 | 3.975 | 1.9% | Held-out, reference adapter |

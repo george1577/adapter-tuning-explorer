@@ -1,0 +1,29 @@
+[project]
+name = "adapter-tuning-explorer"
+version = "0.1.0"
+description = "Interactive Streamlit app for learning how adapter tuning adapts a pretrained model"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "streamlit>=1.40",
+    "torch>=2.5",
+    "transformers>=5",
+    "peft>=0.15",
+    "accelerate>=1.0",
+    "safetensors>=0.4",
+    "num2words>=0.5",
+    "pillow>=11",
+    "pandas>=2.2",
+    "altair>=5",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = ["slow: loads the real SmolVLM model (deselect with -m 'not slow')"]

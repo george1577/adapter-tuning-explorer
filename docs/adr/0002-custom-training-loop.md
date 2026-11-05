@@ -1,0 +1,3 @@
+# Custom training loop in a background thread instead of `SFTTrainer`
+
+The training tab needs each step's loss split into prompt and caption tokens, the adapter's growth and a check that the base weights stay frozen, and `SFTTrainer` doesn't expose those per-step values without working around it. So the app runs its own small loop using the notebook's hyperparameters, in a background thread because a Streamlit rerun would otherwise kill a run that lasts minutes. We accept that this is a teaching copy, not the library's implementation: it omits features such as distributed training and mixed precision.

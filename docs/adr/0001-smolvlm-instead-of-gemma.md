@@ -1,0 +1,3 @@
+# Train SmolVLM-256M live instead of Gemma 3 4B
+
+The reference notebook tunes Gemma 3 4B with 4-bit quantization on a 32 GB NVIDIA GPU, which can't run on the 8 GB Apple Silicon laptop this app targets, so the app trains a real LoRA adapter on SmolVLM-256M on CPU instead (measured: 1.52 GB peak memory, about 4 s per example, 30 MB adapter). We chose this over replaying recorded results or shipping precomputed Gemma output, because producing and inspecting real numbers is the purpose of the app, and over a smaller text-only model because it keeps the notebook's image-captioning task. We accept that the live run is plain LoRA, not QLoRA, so quantization is only simulated on real weights and the notebook's Gemma results appear as recorded reference data.
